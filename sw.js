@@ -1,6 +1,6 @@
 /* Carnet de pêche — service worker.
    Incrémente VERSION à chaque mise à jour du site pour forcer le rafraîchissement. */
-const VERSION = "v1";
+const VERSION = "v2";
 const CACHE = "carnet-" + VERSION;
 const FICHIERS = [
   "./", "./index.html", "./manifest.json",
