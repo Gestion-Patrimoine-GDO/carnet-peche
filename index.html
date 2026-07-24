@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1B2B2E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Carnet">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Carnet de pêche</title>
+<style>
+:root{
+  --papier:#E9E4D6;--haut-fond:#CFE0DC;--isobathe:#8FA9A4;
+  --encre:#1B2B2E;--magenta:#D6006F;--trait:rgba(27,43,46,.22);
+  --ui:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--papier);color:var(--encre);font-family:var(--ui);font-size:16px;line-height:1.5;
+  background-image:radial-gradient(var(--trait) .5px,transparent .5px);background-size:22px 22px;
+  padding-bottom:calc(72px + var(--safe-b));
+}
+
+/* Entête */
+header{background:var(--encre);color:var(--papier);padding:calc(10px + env(safe-area-inset-top,0px)) 16px 10px;
+  display:flex;align-items:center;gap:11px;position:sticky;top:0;z-index:30}
+header .mark{width:24px;height:24px;border:1.5px solid var(--haut-fond);border-radius:50%;position:relative;flex:none}
+header .mark::after{content:"";position:absolute;inset:7px;background:var(--magenta);border-radius:50%}
+header h1{margin:0;font-size:14px;font-weight:700;letter-spacing:.15em;text-transform:uppercase}
+header .etat{margin-left:auto;font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;color:var(--isobathe);text-align:right}
+
+main{max-width:780px;margin:0 auto;padding:16px}
+.vue{display:none}.vue.actif{display:block}
+
+/* Navigation basse */
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--encre);display:flex;z-index:30;
+  padding-bottom:var(--safe-b);border-top:1px solid rgba(233,228,214,.2)}
+nav button{flex:1;background:none;border:0;color:var(--isobathe);padding:11px 4px 12px;font-family:var(--ui);
+  font-size:10px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;cursor:pointer;display:flex;
+  flex-direction:column;align-items:center;gap:5px}
+nav button .ic{font-family:var(--mono);font-size:16px;font-weight:400}
+nav button.actif{color:var(--papier)}
+nav button.actif .ic{color:var(--magenta)}
+nav button:focus-visible{outline:2px solid var(--magenta);outline-offset:-3px}
+
+/* Blocs */
+.bloc{border:1px solid var(--encre);background:rgba(255,255,255,.6);padding:14px;margin-bottom:16px}
+.bloc>h2{margin:0 0 12px;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  display:flex;align-items:center;gap:9px}
+.bloc>h2 .aide{margin-left:auto;font-family:var(--mono);font-size:9.5px;font-weight:400;letter-spacing:0;
+  text-transform:none;color:var(--isobathe)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:11px}
+label{display:block}
+.lbl{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:#4c6265;margin-bottom:4px}
+input,select,textarea{width:100%;padding:11px 10px;border:1px solid var(--trait);background:#fff;color:var(--encre);
+  font-family:var(--mono);font-size:16px;border-radius:0}
+input:focus,select:focus{outline:2px solid var(--magenta);outline-offset:-2px}
+select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--encre) 50%),
+  linear-gradient(135deg,var(--encre) 50%,transparent 50%);
+  background-position:calc(100% - 15px) 54%,calc(100% - 10px) 54%;background-size:5px 5px;background-repeat:no-repeat}
+
+button.b{font-family:var(--ui);font-weight:600;cursor:pointer;border-radius:0;border:1px solid var(--encre);
+  background:transparent;color:var(--encre);padding:11px 15px;font-size:14px}
+button.b:active{background:var(--encre);color:var(--papier)}
+button.b:focus-visible{outline:2px solid var(--magenta);outline-offset:2px}
+button.p{background:var(--magenta);border-color:var(--magenta);color:#fff}
+button.s{font-size:12px;padding:7px 11px}
+.rangee{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+.pleine{width:100%;justify-content:center}
+
+/* Sondes */
+.sondes{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:1px;background:var(--trait);
+  border:1px solid var(--trait);margin-top:12px}
+.sonde{background:#fff;padding:8px 9px}
+.sonde .k{font-family:var(--mono);font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--isobathe)}
+.sonde .v{font-family:var(--mono);font-size:16px;font-weight:600;margin-top:2px}
+.sonde .v small{font-size:9.5px;font-weight:400;color:#4c6265}
+
+/* Séquences */
+.seq{border:1px solid var(--encre);padding:13px;margin-bottom:13px;background:#fff}
+.seq-h{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+.seq-h .n{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--magenta);letter-spacing:.1em}
+.seq-h .sup{margin-left:auto}
+details{margin-top:11px;border-top:1px dashed var(--trait);padding-top:11px}
+summary{font-family:var(--mono);font-size:11px;color:#4c6265;cursor:pointer;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"+ ";color:var(--magenta);font-weight:600}
+details[open] summary::before{content:"− "}
+details[open] summary{margin-bottom:11px}
+
+.bred{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12.5px;padding:11px;
+  border:1px dashed var(--magenta);background:rgba(214,0,111,.05);margin:12px 0}
+.bred input{width:22px;height:22px;flex:none}
+.capt{display:grid;grid-template-columns:1fr 84px 84px;gap:8px;align-items:end;margin-bottom:9px}
+.capt .del{grid-column:1/-1}
+@media(min-width:520px){.capt{grid-template-columns:1fr 84px 84px auto auto}.capt .del{grid-column:auto}}
+.chk{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12px;padding-bottom:11px}
+.chk input{width:20px;height:20px}
+
+/* Listes */
+.liste{border:1px solid var(--trait)}
+.it{display:flex;gap:11px;align-items:center;padding:11px;border-bottom:1px solid var(--trait);
+  font-family:var(--mono);font-size:12.5px;background:#fff}
+.it:last-child{border-bottom:0}
+.it .d{font-weight:600;flex:none}
+.it .m{color:#4c6265;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vide{padding:26px 16px;text-align:center;font-family:var(--mono);font-size:12px;color:var(--isobathe);
+  border:1px dashed var(--trait)}
+
+/* KPI + graphes */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:1px;background:var(--trait);
+  border:1px solid var(--trait);margin-bottom:16px}
+.kpi{background:#fff;padding:11px}
+.kpi .k{font-family:var(--mono);font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--isobathe)}
+.kpi .v{font-family:var(--mono);font-size:23px;font-weight:600;margin-top:2px;line-height:1.15}
+.kpi .v small{font-size:10px;color:#4c6265;font-weight:400}
+.bar{display:grid;grid-template-columns:118px 1fr 62px;gap:9px;align-items:center;margin-bottom:5px;
+  font-family:var(--mono);font-size:11.5px}
+.bar .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .t{height:18px;background:rgba(27,43,46,.07);position:relative}
+.bar .t i{position:absolute;inset:0 auto 0 0;background:var(--magenta)}
+.bar .t i.faible{background:var(--isobathe)}
+.bar .v{text-align:right;font-weight:600}
+.bar .v small{color:var(--isobathe);font-weight:400}
+
+.msg{font-family:var(--mono);font-size:11.5px;margin-top:9px;min-height:16px}
+.msg.ok{color:#0d6b4f}.msg.ko{color:var(--magenta)}
+.note{font-family:var(--mono);font-size:11px;color:#4c6265;line-height:1.6;border-left:2px solid var(--magenta);
+  padding-left:11px;margin:14px 0}
+.drop{border:1px dashed var(--isobathe);padding:18px;text-align:center;font-family:var(--mono);font-size:11.5px;
+  color:#4c6265;margin-top:12px}
+.drop.on{border-color:var(--magenta);background:rgba(214,0,111,.06);color:var(--magenta)}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + var(--safe-b));background:var(--encre);
+  color:var(--papier);font-family:var(--mono);font-size:12px;padding:10px 16px;z-index:60;opacity:0;
+  pointer-events:none;transition:opacity .2s;max-width:88vw;text-align:center}
+.toast.on{opacity:1}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="mark" aria-hidden="true"></span>
+  <h1>Carnet de pêche</h1>
+  <span class="etat" id="etat"></span>
+</header>
+
+<main>
+  <!-- ============ SAISIE ============ -->
+  <div class="vue actif" id="v-saisie">
+    <div class="bloc">
+      <h2>La sortie</h2>
+      <div class="grid">
+        <label><span class="lbl">Date</span><input id="date" type="date"></label>
+        <label><span class="lbl">Milieu</span><select id="milieu"></select></label>
+        <label><span class="lbl">Espèce recherchée</span><select id="cible"></select></label>
+      </div>
+      <div class="rangee">
+        <button type="button" class="b s" id="btnCond">Relever météo &amp; position</button>
+      </div>
+      <div class="msg" id="msgCond"></div>
+      <div class="sondes" id="sondes"></div>
+      <details>
+        <summary>Détails du poste</summary>
+        <div class="grid">
+          <label><span class="lbl">Structure pêchée</span><select id="structure"></select></label>
+          <label><span class="lbl">Clarté de l'eau</span><select id="clarte"></select></label>
+          <label><span class="lbl">Niveau / marée</span><select id="niveau"></select></label>
+          <label><span class="lbl">Temp. eau (°C)</span><input id="tempEau" type="number" step="0.5" inputmode="decimal"></label>
+        </div>
+      </details>
+    </div>
+
+    <div class="bloc">
+      <h2>Ce que j'ai pêché<span class="aide">1 technique = 1 séquence</span></h2>
+      <div id="seqs"></div>
+      <button type="button" class="b s" id="btnSeq">+ Autre technique</button>
+    </div>
+
+    <button type="button" class="b p pleine" id="btnSave" style="width:100%">Enregistrer la sortie</button>
+    <div class="msg" id="msgSave"></div>
+  </div>
+
+  <!-- ============ CARNET ============ -->
+  <div class="vue" id="v-carnet">
+    <div class="bloc">
+      <h2>Mon carnet<span class="aide" id="cntCarnet"></span></h2>
+      <div id="liste"></div>
+    </div>
+    <div class="bloc">
+      <h2>Partage</h2>
+      <p class="note">Pour comparer avec les autres : envoie ton carnet (WhatsApp, mail), et charge le leur ici. Les doublons sont ignorés automatiquement.</p>
+      <div class="rangee">
+        <button type="button" class="b" id="btnExport">Envoyer mon carnet</button>
+        <button type="button" class="b" id="btnFile">Charger un carnet</button>
+        <input type="file" id="file" accept=".json" multiple hidden>
+      </div>
+      <div class="drop" id="drop">…ou glisse un fichier ici</div>
+      <div class="msg" id="msgCarnet"></div>
+    </div>
+    <div class="bloc">
+      <h2>Réglages</h2>
+      <div class="grid">
+        <label><span class="lbl">Mon pseudo</span><input id="pseudo" placeholder="ex. papa"></label>
+      </div>
+      <div class="rangee"><button type="button" class="b s" id="btnReset">Tout effacer</button></div>
+    </div>
+  </div>
+
+  <!-- ============ ANALYSE ============ -->
+  <div class="vue" id="v-analyse">
+    <div class="bloc">
+      <h2>Filtres</h2>
+      <div class="grid">
+        <label><span class="lbl">Pêcheur</span><select id="fPecheur"></select></label>
+        <label><span class="lbl">Espèce recherchée</span><select id="fCible"></select></label>
+        <label><span class="lbl">Milieu</span><select id="fMilieu"></select></label>
+      </div>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <div class="bloc"><h2>Techniques<span class="aide">% de séquences avec prise</span></h2><div id="cTech"></div></div>
+    <div class="bloc"><h2>Heures<span class="aide">quand ça mord</span></h2><div id="cHeure"></div></div>
+    <div class="bloc"><h2>Espèces prises<span class="aide">nombre · taille moyenne</span></h2><div id="cEsp"></div></div>
+    <div class="bloc"><h2>Conditions</h2><div id="cCond"></div></div>
+    <p class="note" id="prudence"></p>
+  </div>
+</main>
+
+<nav>
+  <button type="button" class="actif" data-v="saisie"><span class="ic">✎</span>Saisir</button>
+  <button type="button" data-v="carnet"><span class="ic">▤</span>Carnet</button>
+  <button type="button" data-v="analyse"><span class="ic">▧</span>Analyse</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const FORMAT="carnet-peche/v1", CLE="carnet-peche-data";
+
+/* ---------- Stockage tolérant aux pannes ---------- */
+const STORE=(()=>{
+  let mem={},dispo=true;
+  try{localStorage.setItem("__t","1");localStorage.removeItem("__t");}catch(e){dispo=false;}
+  return{
+    dispo,
+    get(k){try{return dispo?localStorage.getItem(k):(mem[k]??null);}catch(e){return mem[k]??null;}},
+    set(k,v){try{dispo?localStorage.setItem(k,v):mem[k]=v;}catch(e){dispo=false;mem[k]=v;}},
+    del(k){try{dispo?localStorage.removeItem(k):delete mem[k];}catch(e){delete mem[k];}}
+  };
+})();
+
+/* ---------- Référentiels ---------- */
+const MILIEUX=["rivière","fleuve","canal","lac","étang","réservoir","mer du bord","mer en bateau","port / estuaire"];
+const STRUCTURES=["herbier","cassure","bois noyé / obstacle","pont / pilier","veine de courant","plat","fosse","embouchure","digue / enrochement","plage","aucune particulière"];
+const CLARTES=["claire","légèrement teintée","teintée","troublée"];
+const NIVEAUX=["étiage / bas","normal","haut","en montée","en baisse","marée montante","marée descendante","étale"];
+const ESPECES=["brochet","sandre","perche","black-bass","silure","truite","ombre","chevesne","aspe","carpe","gardon","brème","tanche","anguille","bar / loup","dorade","maquereau","lieu","seiche / calmar","autre"];
+const FAMILLES={
+  "leurre souple":["shad","finesse / worm","créature","grub","monté texan"],
+  "leurre dur":["poisson nageur","jerkbait","crankbait","topwater / popper","lipless","swimbait"],
+  "métal":["cuillère tournante","cuillère ondulante","lame vibrante","jig","tail spin"],
+  "appât naturel":["vif","ver de terre","asticot","pain / graine","bouillette","crevette / crabe","poisson mort posé"],
+  "mouche":["sèche","nymphe","streamer","noyée"]
+};
+const COLORIS=["naturel / ablette","chartreuse","blanc / nacré","fire tiger","noir","marron / écrevisse","rouge","doré / orange","translucide","bleu / argent","rose / fluo","sans objet"];
+const ANIMATIONS=["linéaire","dents de scie","stop & go","twitching","lente sur le fond","dérive","statique / posé","verticale"];
+const FILS=["tresse","nylon","fluorocarbone"];
+
+/* ---------- Utilitaires ---------- */
+const $=s=>document.querySelector(s);
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!==undefined)e.innerHTML=h;return e;};
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const num=v=>(v===""||v===undefined||v===null)?null:+v;
+const pct=x=>Math.round(x*100);
+function fill(sel,arr,vide){sel.innerHTML="";sel.appendChild(new Option(vide||"—",""));arr.forEach(v=>sel.appendChild(new Option(v,v)));}
+function msg(n,t,ok){n.className="msg "+(ok?"ok":"ko");n.textContent=t;}
+let tt;
+function toast(t){const n=$("#toast");n.textContent=t;n.classList.add("on");clearTimeout(tt);tt=setTimeout(()=>n.classList.remove("on"),2600);}
+
+/* ---------- État ---------- */
+let D={format:FORMAT,pseudo:"",sorties:[]};
+let pos={lat:null,lon:null},cond={},seqs=[];
+
+function sauver(){STORE.set(CLE,JSON.stringify(D));majEtat();}
+function charger(){
+  const raw=STORE.get(CLE);
+  if(raw){try{const j=JSON.parse(raw);if(j.sorties)D=j;}catch(e){}}
+}
+function majEtat(){
+  const n=D.sorties.length;
+  $("#etat").innerHTML=n+" sortie"+(n>1?"s":"")+(STORE.dispo?"":"<br>⚠ non sauvegardé");
+}
+
+/* ---------- Navigation ---------- */
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("actif",x===b));
+  document.querySelectorAll(".vue").forEach(v=>v.classList.toggle("actif",v.id==="v-"+b.dataset.v));
+  window.scrollTo(0,0);
+  if(b.dataset.v==="carnet")rendreCarnet();
+  if(b.dataset.v==="analyse"){initFiltres();analyse();}
+});
+
+/* ---------- Init ---------- */
+fill($("#milieu"),MILIEUX);fill($("#structure"),STRUCTURES);
+fill($("#clarte"),CLARTES);fill($("#niveau"),NIVEAUX);fill($("#cible"),ESPECES);
+$("#date").value=new Date().toISOString().slice(0,10);
+charger();
+$("#pseudo").value=D.pseudo||"";
+$("#pseudo").onchange=()=>{D.pseudo=$("#pseudo").value.trim();sauver();};
+majEtat();
+
+/* ---------- Lune ---------- */
+function lune(d){
+  const SYN=29.530588853,REF=Date.UTC(2000,0,6,18,14);
+  const j=(new Date(d+"T12:00:00Z").getTime()-REF)/86400000;
+  const age=((j%SYN)+SYN)%SYN;
+  const noms=["nouvelle lune","premier croissant","premier quartier","gibbeuse croissante","pleine lune","gibbeuse décroissante","dernier quartier","dernier croissant"];
+  return{phase:noms[Math.floor((age/SYN)*8+.5)%8],illumination:Math.round(((1-Math.cos(2*Math.PI*age/SYN))/2)*100)};
+}
+
+/* ---------- Météo + position ---------- */
+$("#btnCond").onclick=()=>{
+  if(!navigator.geolocation)return msg($("#msgCond"),"Géolocalisation indisponible. Remplis les détails à la main.",false);
+  msg($("#msgCond"),"Relevé en cours…",true);
+  navigator.geolocation.getCurrentPosition(async p=>{
+    pos.lat=Math.round(p.coords.latitude*100)/100;
+    pos.lon=Math.round(p.coords.longitude*100)/100;
+    sondes();
+    if(!navigator.onLine)return msg($("#msgCond"),"Position relevée. Météo indisponible hors réseau — elle n'est pas obligatoire.",true);
+    try{
+      const d=$("#date").value;
+      const u="https://api.open-meteo.com/v1/forecast?latitude="+pos.lat+"&longitude="+pos.lon
+        +"&hourly=temperature_2m,pressure_msl,wind_speed_10m,cloud_cover,precipitation"
+        +"&start_date="+d+"&end_date="+d+"&timezone=auto";
+      const r=await fetch(u); if(!r.ok)throw new Error("HTTP "+r.status);
+      const h=(await r.json()).hourly;
+      const hh=(seqs[0]&&seqs[0].heure)?parseInt(seqs[0].heure.slice(0,2)):new Date().getHours();
+      const i=Math.min(Math.max(hh,0),h.time.length-1);
+      cond={temp_air:h.temperature_2m[i],pression_hpa:h.pressure_msl[i],vent_kmh:h.wind_speed_10m[i],
+            nuages_pct:h.cloud_cover[i],precip_mm:h.precipitation[i],
+            tendance:Math.round(((h.pressure_msl[Math.min(i+3,23)]??h.pressure_msl[i])-h.pressure_msl[i])*10)/10};
+      msg($("#msgCond"),"Conditions relevées pour "+String(i).padStart(2,"0")+" h.",true);
+      sondes();
+    }catch(e){msg($("#msgCond"),"Position OK, météo indisponible ("+e.message+").",false);}
+  },()=>msg($("#msgCond"),"Position refusée. Ce n'est pas bloquant, continue la saisie.",false),{timeout:12000});
+};
+
+function sondes(){
+  const l=lune($("#date").value||new Date().toISOString().slice(0,10));
+  const it=[
+    ["Air",cond.temp_air??"—","°C"],
+    ["Pression",cond.pression_hpa!=null?Math.round(cond.pression_hpa):"—","hPa"],
+    ["Tendance",cond.tendance!=null?(cond.tendance>0?"+":"")+cond.tendance:"—","/3h"],
+    ["Vent",cond.vent_kmh!=null?Math.round(cond.vent_kmh):"—","km/h"],
+    ["Nuages",cond.nuages_pct??"—","%"],
+    ["Lune",l.illumination,"%"]
+  ];
+  $("#sondes").innerHTML=it.map(([k,v,u])=>'<div class="sonde"><div class="k">'+k+'</div><div class="v">'+v+' <small>'+u+'</small></div></div>').join("");
+}
+$("#date").onchange=sondes;
+sondes();
+
+/* ---------- Séquences ---------- */
+function addSeq(){
+  seqs.push({id:uid(),heure:"",duree:"",famille:"",type:"",coloris:"",taille:"",animation:"",
+             profondeur:"",fil:"",touches:"",bredouille:false,captures:[]});
+  renderSeqs();
+}
+function renderSeqs(){
+  const box=$("#seqs");box.innerHTML="";
+  seqs.forEach((s,i)=>{
+    const c=el("div","seq");
+    c.appendChild(el("div","seq-h",'<span class="n">TECHNIQUE '+(i+1)+'</span><span class="sup"></span>'));
+    if(seqs.length>1){const d=el("button","b s","Retirer");d.type="button";
+      d.onclick=()=>{seqs.splice(i,1);renderSeqs();};c.querySelector(".sup").appendChild(d);}
+
+    const champ=(par,lbl,key,type,opts)=>{
+      const w=el("label");w.appendChild(el("span","lbl",lbl));
+      let inp;
+      if(opts){inp=document.createElement("select");fill(inp,opts);}
+      else{inp=document.createElement("input");inp.type=type||"text";if(type==="number"){inp.step="any";inp.inputMode="decimal";}}
+      inp.value=s[key]||"";
+      inp.onchange=()=>{s[key]=inp.value;if(key==="famille"){s.type="";renderSeqs();}};
+      w.appendChild(inp);par.appendChild(w);
+    };
+
+    const g=el("div","grid");
+    champ(g,"Heure de début","heure","time");
+    champ(g,"Famille","famille",null,Object.keys(FAMILLES));
+    champ(g,"Type","type",null,s.famille?FAMILLES[s.famille]:[]);
+    c.appendChild(g);
+
+    const br=el("div","bred");
+    const cb=document.createElement("input");cb.type="checkbox";cb.checked=s.bredouille;cb.id="b"+s.id;
+    cb.onchange=()=>{s.bredouille=cb.checked;if(cb.checked)s.captures=[];renderSeqs();};
+    const lb=el("label",null,"Rien pris avec cette technique");lb.setAttribute("for","b"+s.id);lb.style.margin="0";
+    br.appendChild(cb);br.appendChild(lb);c.appendChild(br);
+
+    if(!s.bredouille){
+      s.captures.forEach((cap,j)=>{
+        const r=el("div","capt");
+        const mk=(lbl,key,type,opts)=>{
+          const w=el("label");w.appendChild(el("span","lbl",lbl));
+          let inp;if(opts){inp=document.createElement("select");fill(inp,opts);}
+          else{inp=document.createElement("input");inp.type=type;inp.step="any";inp.inputMode="decimal";}
+          inp.value=cap[key]||"";inp.onchange=()=>cap[key]=inp.value;w.appendChild(inp);return w;
+        };
+        r.appendChild(mk("Espèce","espece",null,ESPECES));
+        r.appendChild(mk("Taille cm","taille","number"));
+        r.appendChild(mk("Poids g","poids","number"));
+        const k=el("div","chk");const cc=document.createElement("input");cc.type="checkbox";cc.checked=cap.relachee!==false;
+        cc.onchange=()=>cap.relachee=cc.checked;k.appendChild(cc);k.appendChild(el("span",null,"relâché"));
+        r.appendChild(k);
+        const d=el("button","b s del","Retirer la prise");d.type="button";
+        d.onclick=()=>{s.captures.splice(j,1);renderSeqs();};r.appendChild(d);
+        c.appendChild(r);
+      });
+      const a=el("button","b s","+ Une prise");a.type="button";
+      a.onclick=()=>{s.captures.push({espece:$("#cible").value||"",taille:"",poids:"",relachee:true});renderSeqs();};
+      c.appendChild(a);
+    }
+
+    const det=el("details");
+    det.appendChild(el("summary",null,"Plus de détails"));
+    const g2=el("div","grid");
+    champ(g2,"Coloris","coloris",null,COLORIS);
+    champ(g2,"Taille leurre (cm)","taille","number");
+    champ(g2,"Animation","animation",null,ANIMATIONS);
+    champ(g2,"Profondeur (m)","profondeur","number");
+    champ(g2,"Fil","fil",null,FILS);
+    champ(g2,"Durée (min)","duree","number");
+    champ(g2,"Touches ratées","touches","number");
+    det.appendChild(g2);c.appendChild(det);
+    box.appendChild(c);
+  });
+}
+$("#btnSeq").onclick=addSeq;
+addSeq();
+
+/* ---------- Enregistrer ---------- */
+$("#btnSave").onclick=()=>{
+  if(!$("#date").value)return msg($("#msgSave"),"Il manque la date.",false);
+  if(!$("#milieu").value)return msg($("#msgSave"),"Il manque le milieu.",false);
+  const ok=seqs.filter(s=>s.famille&&(s.bredouille||s.captures.length));
+  if(!ok.length)return msg($("#msgSave"),"Renseigne au moins une technique, avec une prise ou la case « rien pris ».",false);
+
+  D.pseudo=$("#pseudo").value.trim()||D.pseudo;
+  D.sorties.push({
+    id:uid(),pecheur:D.pseudo||"moi",date:$("#date").value,
+    milieu:$("#milieu").value,structure:$("#structure").value,
+    espece_ciblee:$("#cible").value,clarte_eau:$("#clarte").value,
+    niveau_eau:$("#niveau").value,temp_eau:num($("#tempEau").value),
+    lat:pos.lat,lon:pos.lon,lune:lune($("#date").value),
+    conditions:Object.keys(cond).length?cond:null,
+    sequences:ok.map(s=>({
+      id:s.id,heure:s.heure||null,duree_min:num(s.duree),famille:s.famille,type:s.type||null,
+      coloris:s.coloris||null,taille_leurre_cm:num(s.taille),animation:s.animation||null,
+      profondeur_m:num(s.profondeur),fil:s.fil||null,touches:num(s.touches),bredouille:!!s.bredouille,
+      captures:s.captures.map(c=>({espece:c.espece||null,taille_cm:num(c.taille),poids_g:num(c.poids),relachee:c.relachee!==false}))
+    }))
+  });
+  sauver();
+  seqs=[];addSeq();cond={};sondes();
+  $("#tempEau").value="";$("#msgSave").textContent="";
+  toast("Sortie enregistrée");
+};
+
+/* ---------- Carnet ---------- */
+function rendreCarnet(){
+  const box=$("#liste");box.innerHTML="";
+  $("#cntCarnet").textContent=D.sorties.length+" sortie(s)";
+  if(!D.sorties.length){box.appendChild(el("div","vide","Aucune sortie pour l'instant."));return;}
+  const l=el("div","liste");
+  D.sorties.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||"")).forEach(s=>{
+    const nc=s.sequences.reduce((a,q)=>a+q.captures.length,0);
+    const it=el("div","it",'<span class="d">'+s.date+'</span><span class="m">'+
+      (s.pecheur?s.pecheur+" · ":"")+s.milieu+' · '+nc+' prise'+(nc>1?"s":"")+'</span>');
+    const d=el("button","b s","×");d.type="button";
+    d.onclick=()=>{if(confirm("Supprimer la sortie du "+s.date+" ?")){D.sorties=D.sorties.filter(x=>x.id!==s.id);sauver();rendreCarnet();}};
+    it.appendChild(d);l.appendChild(it);
+  });
+  box.appendChild(l);
+}
+
+$("#btnExport").onclick=async()=>{
+  if(!D.sorties.length)return msg($("#msgCarnet"),"Le carnet est vide.",false);
+  const nom="carnet-"+(D.pseudo||"peche").replace(/[^a-z0-9]/gi,"_")+"-"+new Date().toISOString().slice(0,10)+".json";
+  const txt=JSON.stringify({...D,exporte_le:new Date().toISOString()},null,2);
+  const b=new Blob([txt],{type:"application/json"});
+  if(navigator.canShare&&navigator.canShare({files:[new File([b],nom,{type:"application/json"})]})){
+    try{await navigator.share({files:[new File([b],nom,{type:"application/json"})],title:"Carnet de pêche"});return;}catch(e){}
+  }
+  const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=nom;a.click();URL.revokeObjectURL(a.href);
+  msg($("#msgCarnet"),"Carnet exporté.",true);
+};
+
+function importer(files){
+  let n=0,dbl=0,ko=0,reste=files.length;
+  [...files].forEach(f=>{
+    const r=new FileReader();
+    r.onload=()=>{
+      try{
+        const j=JSON.parse(r.result);
+        if(!j.sorties)throw new Error("format");
+        const vus=new Set(D.sorties.map(s=>s.id));
+        j.sorties.forEach(s=>{
+          if(vus.has(s.id)){dbl++;return;}
+          if(!s.pecheur)s.pecheur=j.pseudo||f.name.replace(/\.json$/i,"");
+          D.sorties.push(s);vus.add(s.id);n++;
+        });
+      }catch(e){ko++;}
+      if(--reste===0){
+        sauver();rendreCarnet();
+        msg($("#msgCarnet"),n+" sortie(s) ajoutée(s)"+(dbl?", "+dbl+" doublon(s) ignoré(s)":"")+(ko?", "+ko+" fichier(s) illisible(s)":"")+".",!ko);
+      }
+    };
+    r.readAsText(f);
+  });
+}
+$("#btnFile").onclick=()=>$("#file").click();
+$("#file").onchange=e=>{importer(e.target.files);e.target.value="";};
+const drop=$("#drop");
+["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("on");}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("on");}));
+drop.addEventListener("drop",e=>importer(e.dataTransfer.files));
+
+$("#btnReset").onclick=()=>{
+  if(!confirm("Effacer définitivement toutes les sorties ? Pense à exporter avant."))return;
+  D={format:FORMAT,pseudo:D.pseudo,sorties:[]};sauver();rendreCarnet();toast("Carnet effacé");
+};
+
+/* ---------- Analyse ---------- */
+function lignes(){
+  const o=[];
+  D.sorties.forEach(s=>(s.sequences||[]).forEach(q=>{
+    o.push({pecheur:s.pecheur||"moi",date:s.date,milieu:s.milieu,cible:s.espece_ciblee,
+      clarte:s.clarte_eau,lune:s.lune?s.lune.phase:null,
+      pression:s.conditions?s.conditions.pression_hpa:null,
+      tendance:s.conditions?s.conditions.tendance:null,
+      heure:q.heure?parseInt(q.heure.slice(0,2)):null,duree:q.duree_min,
+      famille:q.famille,type:q.type,coloris:q.coloris,animation:q.animation,fil:q.fil,
+      nb:q.captures.length,prod:q.captures.length>0?1:0,captures:q.captures});
+  }));
+  return o;
+}
+function initFiltres(){
+  const L=lignes();
+  const o=(sel,vals,tout)=>{const s=$(sel),cur=s.value;s.innerHTML="";s.appendChild(new Option(tout,""));
+    [...new Set(vals.filter(Boolean))].sort().forEach(v=>s.appendChild(new Option(v,v)));
+    s.value=cur;s.onchange=analyse;};
+  o("#fPecheur",L.map(r=>r.pecheur),"tout le monde");
+  o("#fCible",L.map(r=>r.cible),"toutes espèces");
+  o("#fMilieu",L.map(r=>r.milieu),"tous milieux");
+}
+function grouper(rows,cle){
+  const m=new Map();
+  rows.forEach(r=>{const k=typeof cle==="function"?cle(r):r[cle];
+    if(!k)return;if(!m.has(k))m.set(k,{n:0,p:0,c:0});
+    const g=m.get(k);g.n++;g.p+=r.prod;g.c+=r.nb;});
+  return[...m.entries()].map(([k,g])=>({k,...g,taux:g.n?g.p/g.n:0}));
+}
+function barres(sel,data,seuil,tri){
+  const b=$(sel);b.innerHTML="";
+  if(!data.length){b.appendChild(el("div","vide","Pas encore de données."));return;}
+  data.sort(tri||((x,y)=>y.taux-x.taux||y.n-x.n));
+  const max=Math.max(...data.map(d=>d.taux),.01);
+  data.forEach(d=>{
+    const r=el("div","bar");r.appendChild(el("div","n",d.k));
+    const t=el("div","t"),i=el("i");i.style.width=(d.taux/max*100)+"%";
+    if(d.n<seuil)i.className="faible";t.appendChild(i);r.appendChild(t);
+    r.appendChild(el("div","v",pct(d.taux)+"% <small>n"+d.n+"</small>"));
+    b.appendChild(r);
+  });
+}
+function analyse(){
+  const L=lignes(),SEUIL=4;
+  const fp=$("#fPecheur").value,fc=$("#fCible").value,fm=$("#fMilieu").value;
+  const rows=L.filter(r=>(!fp||r.pecheur===fp)&&(!fc||r.cible===fc)&&(!fm||r.milieu===fm));
+
+  const caps=rows.reduce((a,r)=>a+r.nb,0),prod=rows.reduce((a,r)=>a+r.prod,0);
+  const tl=rows.flatMap(r=>r.captures.map(c=>c.taille_cm)).filter(Boolean);
+  const nSort=new Set(rows.map(r=>r.date+"|"+r.pecheur)).size;
+  const best=tl.length?Math.max(...tl):null;
+  const kp=[["Sorties",nSort,""],["Techniques",rows.length,""],
+    ["Réussite",rows.length?pct(prod/rows.length):0,"%"],["Prises",caps,""],
+    ["Moyenne",tl.length?Math.round(tl.reduce((a,b)=>a+b,0)/tl.length):"—","cm"],
+    ["Record",best??"—","cm"]];
+  $("#kpis").innerHTML=kp.map(([k,v,u])=>'<div class="kpi"><div class="k">'+k+'</div><div class="v">'+v+' <small>'+u+'</small></div></div>').join("");
+
+  barres("#cTech",grouper(rows,r=>r.type?r.famille+" · "+r.type:r.famille),SEUIL);
+
+  const tranches=r=>{if(r.heure==null||isNaN(r.heure))return null;
+    return r.heure<6?"nuit (0-6 h)":r.heure<10?"matin (6-10 h)":r.heure<14?"milieu de journée (10-14 h)":
+           r.heure<18?"après-midi (14-18 h)":r.heure<22?"soir (18-22 h)":"nuit (22-0 h)";};
+  barres("#cHeure",grouper(rows,tranches),SEUIL,(a,b)=>a.k.localeCompare(b.k));
+
+  const esp=new Map();
+  rows.forEach(r=>r.captures.forEach(c=>{if(!c.espece)return;
+    if(!esp.has(c.espece))esp.set(c.espece,{n:0,t:[]});
+    const g=esp.get(c.espece);g.n++;if(c.taille_cm)g.t.push(c.taille_cm);}));
+  const be=$("#cEsp");be.innerHTML="";
+  if(!esp.size)be.appendChild(el("div","vide","Aucune prise enregistrée."));
+  else{
+    const arr=[...esp.entries()].sort((a,b)=>b[1].n-a[1].n),max=arr[0][1].n;
+    arr.forEach(([k,g])=>{
+      const moy=g.t.length?Math.round(g.t.reduce((a,b)=>a+b,0)/g.t.length):null;
+      const r=el("div","bar");r.appendChild(el("div","n",k));
+      const t=el("div","t"),i=el("i");i.style.width=(g.n/max*100)+"%";t.appendChild(i);r.appendChild(t);
+      r.appendChild(el("div","v",g.n+' <small>'+(moy?moy+"cm":"")+'</small>'));
+      be.appendChild(r);
+    });
+  }
+
+  const bc=$("#cCond");bc.innerHTML="";
+  const dl=grouper(rows,"lune"),dc=grouper(rows,"clarte");
+  const dt=grouper(rows,r=>r.tendance==null?null:
+    r.tendance<=-1?"pression en baisse":r.tendance<0?"légère baisse":r.tendance===0?"pression stable":
+    r.tendance<1?"légère hausse":"pression en hausse");
+  if(!dl.length&&!dc.length&&!dt.length)bc.appendChild(el("div","vide","Aucune condition relevée."));
+  else{
+    [["Clarté de l'eau",dc,"c1"],["Pression",dt,"c2"],["Lune",dl,"c3"]].forEach(([t,d,id])=>{
+      if(!d.length)return;
+      bc.appendChild(el("p","lbl",t));
+      const w=el("div");w.id=id;bc.appendChild(w);barres("#"+id,d,SEUIL);
+    });
+  }
+
+  $("#prudence").textContent=rows.length<40
+    ? "Encore peu de données ("+rows.length+" techniques enregistrées) : les pourcentages bougeront beaucoup. Les barres grises reposent sur moins de "+SEUIL+" essais. À partir d'une quarantaine, les tendances commencent à tenir."
+    : "Les barres grises reposent sur moins de "+SEUIL+" essais. Attention : ces chiffres décrivent autant ce que vous pratiquez que ce qui marche — une technique très utilisée sort souvent gagnante.";
+}
+
+/* ---------- PWA ---------- */
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+}
+</script>
+</body>
+</html>
